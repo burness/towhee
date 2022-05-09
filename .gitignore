@@ -108,3 +108,11 @@ venv.bak/
 .idea
 .try
 .vscode/
+
+
+# add by burnessduan
+tutorials/volumes/*
+tutorials/*.zip
+tutorials/*.db
+tutorials/image_dataset/*
+tutorials/music_dataset/*
