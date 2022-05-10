@@ -15,8 +15,8 @@ import requests
 import os
 import logging
 import json
+from pyarrow import fs
 from typing import Dict, Set, Any
-
 from towhee.hparam import param_scope, HyperParameter
 from towhee.utils.yaml_utils import dump_yaml, load_yaml
 
@@ -66,7 +66,9 @@ class BaseRepr:
         string = string.read() if hasattr(string, 'read') else string
         retval = load_yaml(string)
         retval = param_scope(**retval)
+        print("in render_template retval: {0}".format(retval))
         variables = retval().variables({})
+        print("in render_template variables: {0}".format(variables))
         with param_scope(**variables) as hp:
             variables.update(hp().variables({}))
             rendered = string.format(**variables)
@@ -105,9 +107,11 @@ class BaseRepr:
                 information.
         """
         rendered = BaseRepr.render_template(string)
+        print("rendered: {0}".format(rendered))
         info = load_yaml(rendered)
         info['ir'] = rendered
         info = BaseRepr.inject_template(info)
+        print(info)
         return info
 
     @staticmethod
@@ -126,6 +130,24 @@ class BaseRepr:
         """
         with open(file, 'r', encoding='utf-8') as f:
             return BaseRepr.load_str(f)
+    
+    @staticmethod
+    def load_hdfs_file(file: str, host: str, username: str, kerb_ticket: str) -> dict:
+        """
+        Load the representation(s) information from a hdfs yaml file.
+
+        Args:
+            file (`str`):
+                The hdfs file path.
+        
+        Returns:
+            (`dict`)
+                The dict loaded from the YAML file that contains the representation
+                information 
+        """
+        hdfs_client = fs.HadoopFileSystem(host=host, user=username, kerb_ticket=kerb_ticket)
+        with hdfs_client.open_input_file() as f:
+            return BaseRepr.load_str(f) 
 
     @staticmethod
     def load_url(url: str) -> dict:
@@ -159,11 +181,14 @@ class BaseRepr:
             (`dict`)
                 The YAML file loaded as dict.
         """
-        # If `file_or_src` is a loacl file.
+        # If `file_or_src` is a local file.
         if os.path.isfile(file_or_src):
             return BaseRepr.load_file(file_or_src)
         # If `file_or_src` from HTTP.
         elif file_or_src.lower().startswith('http'):
             return BaseRepr.load_url(file_or_src)
+        # If `file_or_src` from hdfs.
+        elif file_or_src.lower().startswith("hdfs"):
+            return BaseRepr.load_hdfs_file(file_or_src)
         # If `file_or_src` is neither a file nor url.
         return BaseRepr.load_str(file_or_src)
