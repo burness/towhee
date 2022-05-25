@@ -132,7 +132,7 @@ class BaseRepr:
             return BaseRepr.load_str(f)
     
     @staticmethod
-    def load_hdfs_file(file: str, host: str, username: str, kerb_ticket: str) -> dict:
+    def load_hdfs_file(file: str) -> dict:
         """
         Load the representation(s) information from a hdfs yaml file.
 
@@ -145,7 +145,7 @@ class BaseRepr:
                 The dict loaded from the YAML file that contains the representation
                 information 
         """
-        hdfs_client = fs.HadoopFileSystem(host=host, user=username, kerb_ticket=kerb_ticket)
+        hdfs_client = fs.HadoopFileSystem(**self._hdfs_conf)
         with hdfs_client.open_input_file() as f:
             return BaseRepr.load_str(f) 
 
@@ -167,7 +167,7 @@ class BaseRepr:
         return BaseRepr.load_str(src)
 
     @staticmethod
-    def load_src(file_or_src: str) -> dict:
+    def load_src(file_or_src: str, **kwargs) -> dict:
         """
         Load the information for the representation. We support file from local
         file/HTTP/HDFS.
@@ -176,6 +176,8 @@ class BaseRepr:
             file_or_src (`str`):
                 The source YAML file or the URL points to the source file or a str
                 loaded from source file.
+            kwargs:
+                Hdfs config including host, port, username, kerb_ticket
 
         returns:
             (`dict`)
@@ -189,6 +191,11 @@ class BaseRepr:
             return BaseRepr.load_url(file_or_src)
         # If `file_or_src` from hdfs.
         elif file_or_src.lower().startswith("hdfs"):
-            return BaseRepr.load_hdfs_file(file_or_src)
+            hdfs_config = {}
+            hdfs_config["host"] = kwargs.get("host", "default")
+            hdfs_config["port"] = kwargs.get("port", "8020")
+            hdfs_config["username"] = kwargs.get("username", "")
+            hdfs_config["kerb_ticket"] = kwargs.get("kerb_ticket", "/tmp/krb5cc_0")
+            return BaseRepr.load_hdfs_file(file_or_src, **hdfs_config)
         # If `file_or_src` is neither a file nor url.
         return BaseRepr.load_str(file_or_src)
